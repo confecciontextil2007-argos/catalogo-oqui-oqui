@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Oqui Oqui</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        [contenteditable="true"] {
+            outline: 2px dashed #fb923c;
+            border-radius: 4px;
+            padding: 2px 4px;
+            background: #fff7ed;
+            min-width: 40px;
+            display: inline-block;
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #f97316;
+            background: #fff;
+        }
+        .edit-badge {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 50;
+        }
+        #admin-bar {
+            display: none;
+        }
+        #admin-bar.visible {
+            display: flex;
+        }
+        #export-msg {
+            display: none;
+        }
+        #export-msg.visible {
+            display: block;
+        }
+        .card-edit-btn {
+            display: none;
+        }
+        body.edit-mode .card-edit-btn {
+            display: flex;
+        }
+        body.edit-mode .wa-btn-area {
+            display: none;
+        }
+        .img-overlay {
+            display: none;
+        }
+        body.edit-mode .img-overlay {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="bg-[#faf8f5] font-sans min-h-screen flex flex-col">
+
+    <!-- Barra Admin (solo visible en modo edición) -->
+    <div id="admin-bar" class="visible-when-edit bg-gray-900 text-white px-4 py-3 sticky top-0 z-50 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-orange-400 font-bold text-sm flex items-center gap-1">
+                <i class="fa-solid fa-pen-to-square"></i> MODO EDITOR
+            </span>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-300">WhatsApp:</label>
+                <input id="cfg-tel" type="text" value="51987485878"
+                    class="bg-gray-700 text-white text-xs px-2 py-1 rounded w-36 border border-gray-600 focus:border-orange-400 outline-none"
+                    oninput="updateConfig()">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-300">Mensaje:</label>
+                <input id="cfg-msg" type="text" value="Hola Oqui Oqui, me interesa este producto:"
+                    class="bg-gray-700 text-white text-xs px-2 py-1 rounded w-52 border border-gray-600 focus:border-orange-400 outline-none"
+                    oninput="updateConfig()">
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="addProduct()"
+                class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="fa-solid fa-plus"></i> Agregar producto
+            </button>
+            <button onclick="exportHTML()"
+                class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="fa-solid fa-floppy-disk"></i> Exportar HTML
+            </button>
+            <button onclick="toggleEditor()"
+                class="bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="fa-solid fa-eye"></i> Ver catálogo
+            </button>
+        </div>
+    </div>
+
+    <!-- Mensaje exportación exitosa -->
+    <div id="export-msg" class="bg-green-100 border border-green-400 text-green-800 text-sm px-4 py-3 text-center">
+        <i class="fa-solid fa-circle-check text-green-600 mr-2"></i>
+        <strong>¡HTML copiado al portapapeles!</strong> Pega el contenido en un archivo <code>.html</code> y súbelo a tu servidor.
+        <button onclick="document.getElementById('export-msg').classList.remove('visible')" class="ml-4 text-green-700 hover:text-green-900 font-bold">✕</button>
+    </div>
+
+    <!-- Cabecera / Header -->
+    <header class="bg-white sticky top-0 z-10 shadow-sm border-b border-orange-100" id="main-header">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-100 p-3 rounded-full text-orange-500">
+                    <i class="fa-solid fa-bag-shopping text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Oqui Oqui</h1>
+                    <p class="text-sm text-gray-500 font-medium">Colección de Bebés</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <p class="text-sm text-gray-600 bg-orange-50 px-4 py-2 rounded-full border border-orange-100">
+                    Envíos a todo el país 🇵🇪
+                </p>
+                <button onclick="toggleEditor()" id="btn-editor"
+                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-full border border-gray-200 flex items-center gap-1 transition-colors">
+                    <i class="fa-solid fa-lock text-gray-400"></i>
+                    <span>Editor</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-5xl mx-auto px-4 py-8 flex-grow w-full">
+        <div class="mb-8 text-center md:text-left">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Nuestro Catálogo</h2>
+            <p class="text-gray-600">Desliza o haz clic en las flechas de las fotos para ver más detalles. Toca el botón verde para armar tu pedido.</p>
+        </div>
+
+        <!-- Grid de productos (se genera con JS) -->
+        <div id="productos-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="bg-white border-t border-gray-200 mt-12 py-8 text-center text-gray-500 text-sm">
+        <p>© <span id="year"></span> Oqui Oqui. Todos los derechos reservados.</p>
+    </footer>
+
+    <!-- Botón flotante WhatsApp -->
+    <a id="wa-float" href="#" target="_blank" rel="noopener"
+        class="fixed bottom-5 right-5 z-40 bg-[#25D366] hover:bg-[#20bd5a] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-110">
+        <i class="fa-brands fa-whatsapp"></i>
+    </a>
+
+    <!-- Textarea oculto para exportar -->
+    <textarea id="export-ta" style="position:fixed;left:-9999px;top:-9999px;opacity:0;" aria-hidden="true"></textarea>
+
+    <!-- =====================================================================
+         LÓGICA Y DATOS DEL CATÁLOGO
+         ===================================================================== -->
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // =========================================================================
+        // DATOS EDITABLES
+        // =========================================================================
+        let cfg = { tel: "51987485878", msg: "Hola Oqui Oqui, me interesa este producto:" };
+
+        let productos = [
+            {
+                id: 1,
+                nombre: "Enterizo Algodón Pima Bordado",
+                precio: "$. 5.20",
+                tallas: "RN, 0-3M",
+                descripcion: "Enterizo cruzado en algodón pima con bordado. Pedido mínimo: 120 unidades.",
+                imagenes: [
+                    "fotos/image1.png",
+                    "fotos/image4.png"
+                ]
+            },
+            {
+                id: 2,
+                nombre: "Conjunto Bebé x3 Pzs Plush Acanalado",
+                precio: "$. 8.50",
+                tallas: "RN, 0-3M",
+                descripcion: "Conjunto de 3 piezas en plush acanalado suave. Pedido mínimo: 120 unidades.",
+                imagenes: [
+                    "fotos/image2.png"
+                ]
+            },
+            {
+                id: 3,
+                nombre: "Conjunto Bebé 3 Pzs Diseño Cruzado",
+                precio: "S/ 45.00",
+                tallas: "RN, 0-3M",
+                descripcion: "Conjunto de 3 piezas con diseño cruzado. Pedido mínimo: 6 unidades.",
+                imagenes: [
+                    "fotos/image3.png",
+                    "fotos/image5.png"
+                ]
+            },
+            {
+                id: 4,
+                nombre: "Conjunto Bebé Peluche",
+                precio: "Consultar",
+                tallas: "0-3M, 3-6M, 6-9M",
+                descripcion: "Conjunto en tela peluche suave, abrigador y cómodo. Pedido mínimo: 6 unidades.",
+                imagenes: [
+                    "fotos/image7.png",
+                    "fotos/image6.png"
+                ]
+            },
+            {
+                id: 5,
+                nombre: "Conjunto Plush Acanalado",
+                precio: "Consultar",
+                tallas: "RN, 0-3M",
+                descripcion: "Conjunto en plush acanalado aterciopelado, ideal para recién nacidos.",
+                imagenes: [
+                    "fotos/image8.png",
+                    "fotos/image9.png"
+                ]
+            },
+            {
+                id: 6,
+                nombre: "Enterito Plush Acanalado Aterciopelado",
+                precio: "Consultar",
+                tallas: "RN, 0-3M",
+                descripcion: "Enterito en plush acanalado con acabado aterciopelado, muy suave al tacto.",
+                imagenes: [
+                    "fotos/image10.png"
+                ]
+            },
+            {
+                id: 7,
+                nombre: "Enterito Peluche Diseño Osito",
+                precio: "Consultar",
+                tallas: "0-3M, 3-6M, 6-9M",
+                descripcion: "Enterito de peluche con tierno diseño de osito, abrigador y adorable.",
+                imagenes: [
+                    "fotos/image11.png"
+                ]
+            },
+            {
+                id: 8,
+                nombre: "Enterito Peluche",
+                precio: "Consultar",
+                tallas: "0-3M, 3-6M, 6-9M",
+                descripcion: "Enterito en tela peluche suave, cómodo y abrigador para el bebé.",
+                imagenes: [
+                    "fotos/image12.png"
+                ]
+            },
+            {
+                id: 9,
+                nombre: "Enterito Peluche Conejo",
+                precio: "Consultar",
+                tallas: "0-3M, 3-6M, 6-9M",
+                descripcion: "Enterito de peluche con diseño conejo. Incluye conjunto.",
+                imagenes: [
+                    "fotos/image13.png",
+                    "fotos/image16.png"
+                ]
+            },
+            {
+                id: 10,
+                nombre: "Enterito Peluche Oso",
+                precio: "Consultar",
+                tallas: "0-3M, 3-6M, 6-9M",
+                descripcion: "Enterito de peluche con diseño oso, suave y muy abrigador.",
+                imagenes: [
+                    "fotos/image14.png",
+                    "fotos/image15.png"
+                ]
+            },
+            {
+                id: 11,
+                nombre: "Producto OQ011",
+                precio: "Consultar",
+                tallas: "Consultar",
+                descripcion: "Consultar disponibilidad y tallas.",
+                imagenes: [
+                    "fotos/image17.png"
+                ]
+            },
+            {
+                id: 12,
+                nombre: "Producto OQ012",
+                precio: "Consultar",
+                tallas: "Consultar",
+                descripcion: "Consultar disponibilidad y tallas.",
+                imagenes: [
+                    "fotos/image18.png"
+                ]
+            }
+        ];
+        // =========================================================================
+
+        // Estado de imágenes del carrusel
+        const estadoImagenes = {};
+
+        let editMode = false;
+
+        // =========================================================================
+        // RENDER
+        // =========================================================================
+        function render() {
+            // Sincronizar estado de imágenes
+            productos.forEach(p => {
+                if (estadoImagenes[p.id] === undefined) estadoImagenes[p.id] = 0;
+                // Asegurarse de que el índice no se salga de rango
+                if (estadoImagenes[p.id] >= p.imagenes.length) estadoImagenes[p.id] = 0;
+            });
+
+            const contenedor = document.getElementById('productos-grid');
+            let html = '';
+
+            productos.forEach((producto, idx) => {
+                const imgIdx = estadoImagenes[producto.id] || 0;
+                const totalImg = producto.imagenes.length;
+                const editable = editMode ? 'contenteditable="true"' : 'contenteditable="false"';
+
+                // Dots de navegación
+                let dotsHtml = '';
+                if (totalImg > 1) {
+                    dotsHtml = `<div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">`;
+                    for (let i = 0; i < totalImg; i++) {
+                        dotsHtml += `<div class="w-1.5 h-1.5 rounded-full ${i === imgIdx ? 'bg-orange-500' : 'bg-white/60'}"></div>`;
+                    }
+                    dotsHtml += `</div>`;
+                }
+
+                // Botones de imagen adicional en modo editor
+                let imgEditBtns = `
+                    <div class="img-overlay absolute inset-0 bg-black/40 items-center justify-center gap-2 z-20 flex-wrap p-2">
+                        <button onclick="changeProductImg(${idx})"
+                            class="bg-white text-gray-800 text-xs font-bold px-2 py-1 rounded shadow flex items-center gap-1">
+                            <i class="fa-solid fa-image"></i> Cambiar foto
+                        </button>
+                        <button onclick="addProductImg(${idx})"
+                            class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded shadow flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Añadir foto
+                        </button>
+                        ${totalImg > 1 ? `<button onclick="removeProductImg(${idx})"
+                            class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded shadow flex items-center gap-1">
+                            <i class="fa-solid fa-trash"></i> Quitar foto
+                        </button>` : ''}
+                    </div>
+                `;
+
+                // Botón eliminar producto (solo editor)
+                let deleteBtn = editMode ? `
+                    <button onclick="deleteProduct(${idx})"
+                        class="card-edit-btn absolute top-2 right-2 z-30 bg-red-500 hover:bg-red-600 text-white w-7 h-7 rounded-full items-center justify-center text-xs shadow-md transition-colors"
+                        title="Eliminar producto">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                ` : '';
+
+                // Número de producto badge (editor)
+                let idxBadge = editMode ? `
+                    <span class="absolute top-2 left-2 z-30 bg-gray-800/70 text-white text-xs px-2 py-0.5 rounded-full">#${idx + 1}</span>
+                ` : '';
+
+                // Botón WhatsApp
+                const waText = encodeURIComponent(`${cfg.msg} ${producto.nombre} (${producto.precio}). ¿Tienen disponibilidad en estas tallas: ${producto.tallas}?`);
+                const waUrl = `https://wa.me/${cfg.tel}?text=${waText}`;
+
+                html += `
+                <div class="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col relative">
+                    ${deleteBtn}
+
+                    <!-- Carrusel de Imágenes -->
+                    <div class="relative aspect-[4/5] bg-gray-50 group overflow-hidden">
+                        ${idxBadge}
+                        <img
+                            id="img-prod-${producto.id}"
+                            src="${producto.imagenes[imgIdx]}"
+                            alt="${producto.nombre}"
+                            class="w-full h-full object-cover transition-all duration-300"
+                            onerror="this.onerror=null; this.src='https://placehold.co/600x800/fff3e0/ffb74d?text=Foto+${imgIdx + 1}';"
+                        >
+
+                        ${editMode ? imgEditBtns : ''}
+
+                        ${totalImg > 1 ? `
+                            <button onclick="cambiarImagen(${producto.id}, -1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 w-8 h-8 flex items-center justify-center rounded-full shadow-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100 z-10">
+                                <i class="fa-solid fa-chevron-left text-sm"></i>
+                            </button>
+                            <button onclick="cambiarImagen(${producto.id}, 1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 w-8 h-8 flex items-center justify-center rounded-full shadow-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100 z-10">
+                                <i class="fa-solid fa-chevron-right text-sm"></i>
+                            </button>
+                            <div>${dotsHtml}</div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Detalles del Producto -->
+                    <div class="p-5 flex flex-col flex-grow">
+                        <h3 class="font-semibold text-gray-800 text-lg leading-tight mb-1"
+                            ${editable}
+                            oninput="upd(${idx}, 'nombre', this.innerText)">${producto.nombre}</h3>
+
+                        <p class="text-orange-600 font-bold text-xl mb-3"
+                            ${editable}
+                            oninput="upd(${idx}, 'precio', this.innerText)">${producto.precio}</p>
+
+                        <div class="space-y-2 mb-4 flex-grow">
+                            <div class="flex items-start text-sm text-gray-600 gap-2">
+                                <span class="font-medium text-gray-700 min-w-[50px] shrink-0">Tallas:</span>
+                                <span ${editable}
+                                    oninput="upd(${idx}, 'tallas', this.innerText)">${producto.tallas}</span>
+                            </div>
+                            <div class="flex items-start text-sm text-gray-600 gap-2">
+                                <i class="fa-solid fa-circle-info mt-1 flex-shrink-0 text-orange-400"></i>
+                                <p ${editable}
+                                    class="${editMode ? '' : 'line-clamp-2'}"
+                                    oninput="upd(${idx}, 'descripcion', this.innerText)">${producto.descripcion}</p>
+                            </div>
+                        </div>
+
+                        <!-- Botón CTA (WhatsApp) -->
+                        <div class="wa-btn-area">
+                            <a href="${waUrl}" target="_blank" rel="noopener"
+                                class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors mt-auto">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                                <span>Pedir por WhatsApp</span>
+                            </a>
+                        </div>
+
+                        <!-- Info modo editor -->
+                        ${editMode ? `
+                        <div class="mt-2 text-xs text-orange-500 text-center bg-orange-50 rounded-lg py-2 px-3 border border-orange-100">
+                            <i class="fa-solid fa-pen text-xs mr-1"></i>
+                            Toca el texto para editar · Usa los botones de la foto para cambiar imágenes
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                `;
+            });
+
+            contenedor.innerHTML = html;
+
+            // Actualizar botón flotante WhatsApp
+            const waFloatText = encodeURIComponent(`${cfg.msg}`);
+            document.getElementById('wa-float').href = `https://wa.me/${cfg.tel}?text=${waFloatText}`;
+        }
+
+        // =========================================================================
+        // CARRUSEL
+        // =========================================================================
+        function cambiarImagen(idProducto, direccion) {
+            const producto = productos.find(p => p.id === idProducto);
+            if (!producto) return;
+            const totalImg = producto.imagenes.length;
+            let nueva = (estadoImagenes[idProducto] || 0) + direccion;
+            if (nueva >= totalImg) nueva = 0;
+            if (nueva < 0) nueva = totalImg - 1;
+            estadoImagenes[idProducto] = nueva;
+            render();
+        }
+
+        // =========================================================================
+        // ACTUALIZAR CAMPO DE PRODUCTO EN MEMORIA
+        // =========================================================================
+        function upd(idx, field, val) {
+            if (productos[idx]) productos[idx][field] = val.trim();
+        }
+
+        // =========================================================================
+        // EDITOR: TOGGLE
+        // =========================================================================
+        function toggleEditor() {
+            editMode = !editMode;
+            const adminBar = document.getElementById('admin-bar');
+            const btnEditor = document.getElementById('btn-editor');
+            const mainHeader = document.getElementById('main-header');
+
+            if (editMode) {
+                adminBar.classList.add('visible');
+                document.body.classList.add('edit-mode');
+                btnEditor.innerHTML = '<i class="fa-solid fa-eye text-orange-500"></i><span class="text-orange-600 font-semibold">Ver catálogo</span>';
+                mainHeader.classList.add('hidden');
+            } else {
+                adminBar.classList.remove('visible');
+                document.body.classList.remove('edit-mode');
+                btnEditor.innerHTML = '<i class="fa-solid fa-lock text-gray-400"></i><span>Editor</span>';
+                mainHeader.classList.remove('hidden');
+            }
+            render();
+        }
+
+        // =========================================================================
+        // EDITOR: CONFIG WHATSAPP
+        // =========================================================================
+        function updateConfig() {
+            cfg.tel = document.getElementById('cfg-tel').value.trim();
+            cfg.msg = document.getElementById('cfg-msg').value.trim();
+        }
+
+        // =========================================================================
+        // EDITOR: IMÁGENES DE PRODUCTO
+        // =========================================================================
+        function changeProductImg(idx) {
+            const imgIdx = estadoImagenes[productos[idx].id] || 0;
+            const actual = productos[idx].imagenes[imgIdx];
+            const nueva = prompt('URL o ruta de la imagen nueva:\n(Ejemplo: fotos/mi-foto.png)', actual);
+            if (nueva && nueva.trim()) {
+                productos[idx].imagenes[imgIdx] = nueva.trim();
+                render();
+            }
+        }
+
+        function addProductImg(idx) {
+            const nueva = prompt('URL o ruta de la imagen a agregar:\n(Ejemplo: fotos/mi-foto.png)', 'fotos/');
+            if (nueva && nueva.trim()) {
+                productos[idx].imagenes.push(nueva.trim());
+                estadoImagenes[productos[idx].id] = productos[idx].imagenes.length - 1;
+                render();
+            }
+        }
+
+        function removeProductImg(idx) {
+            const p = productos[idx];
+            if (p.imagenes.length <= 1) {
+                alert('El producto debe tener al menos una imagen.');
+                return;
+            }
+            const imgIdx = estadoImagenes[p.id] || 0;
+            if (!confirm('¿Eliminar esta foto del producto?')) return;
+            p.imagenes.splice(imgIdx, 1);
+            estadoImagenes[p.id] = Math.max(0, imgIdx - 1);
+            render();
+        }
+
+        // =========================================================================
+        // EDITOR: AGREGAR / ELIMINAR PRODUCTO
+        // =========================================================================
+        function addProduct() {
+            const newId = Date.now();
+            productos.push({
+                id: newId,
+                nombre: 'Nuevo Producto',
+                precio: 'S/ 0.00',
+                tallas: 'RN, 0-3M',
+                descripcion: 'Descripción del producto. Toca para editar.',
+                imagenes: ['https://placehold.co/600x800/fff3e0/ffb74d?text=Nueva+Foto']
+            });
+            estadoImagenes[newId] = 0;
+            render();
+            // Scroll al último producto
+            setTimeout(() => {
+                const grid = document.getElementById('productos-grid');
+                if (grid && grid.lastElementChild) {
+                    grid.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+
+        function deleteProduct(idx) {
+            const p = productos[idx];
+            if (!confirm(`¿Eliminar "${p.nombre}"?`)) return;
+            delete estadoImagenes[p.id];
+            productos.splice(idx, 1);
+            render();
+        }
+
+        // =========================================================================
+        // EXPORTAR HTML
+        // =========================================================================
+        function exportHTML() {
+            // Recoger textos editados del DOM antes de exportar
+            productos.forEach((p, idx) => {
+                const nombreEl = document.querySelector(`#productos-grid .bg-white:nth-child(${idx + 1}) h3[contenteditable]`);
+                const precioEl = document.querySelector(`#productos-grid .bg-white:nth-child(${idx + 1}) p[contenteditable]`);
+                if (nombreEl) p.nombre = nombreEl.innerText.trim();
+                if (precioEl) p.precio = precioEl.innerText.trim();
+            });
+
+            // Obtener HTML fuente
+            let src = document.documentElement.outerHTML;
+
+            // Serializar productos (sin funciones ni estado)
+            const productosJSON = JSON.stringify(productos, null, 8)
+                .replace(/</g, '\\u003c')
+                .replace(/>/g, '\\u003e');
+
+            // Reemplazar bloque de datos
+            src = src.replace(/let cfg = \{[\s\S]*?\};/, `let cfg = { tel: "${cfg.tel}", msg: "${cfg.msg.replace(/"/g, '\\"')}" };`);
+            src = src.replace(/let productos = \[[\s\S]*?\];/, `let productos = ${productosJSON};`);
+
+            // Quitar estado del editor: cerrar el admin bar y edit-mode
+            src = src.replace(/class="([^"]*)\bedit-mode\b([^"]*)"/, 'class="$1$2"');
+            src = src.replace(/id="admin-bar" class="visible-when-edit[^"]*"/, 'id="admin-bar" class="visible-when-edit"');
+
+            // Limpiar el innerHTML del grid (se regenerará con JS)
+            src = src.replace(/(<div id="productos-grid"[^>]*>)[\s\S]*?(<\/div>\s*<\/main>)/, '$1\n        $2');
+
+            // Copiar al portapapeles
+            const ta = document.getElementById('export-ta');
+            ta.value = src;
+            ta.select();
+            let exito = false;
+            try {
+                exito = document.execCommand('copy');
+            } catch (e) {}
+
+            if (!exito && navigator.clipboard) {
+                navigator.clipboard.writeText(src).then(() => {
+                    mostrarExportOk();
+                }).catch(() => {
+                    fallbackDescarga(src);
+                });
+                return;
+            }
+
+            if (exito) {
+                mostrarExportOk();
+            } else {
+                fallbackDescarga(src);
+            }
+        }
+
+        function mostrarExportOk() {
+            document.getElementById('export-msg').classList.add('visible');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function fallbackDescarga(src) {
+            // Si el portapapeles no funciona, ofrecer descarga directa
+            const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'catalogo-oqui-oqui.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // =========================================================================
+        // INICIAR
+        // =========================================================================
+        // Sincronizar inputs del editor con cfg
+        document.getElementById('cfg-tel').value = cfg.tel;
+        document.getElementById('cfg-msg').value = cfg.msg;
+
+        render();
+    </script>
+</body>
+</html>
